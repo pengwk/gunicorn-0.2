@@ -17,6 +17,7 @@ from gunicorn.worker import Worker
 
 class Arbiter(object):
     
+    # 为什么是类变量？
     LISTENER = None
     WORKERS = {}    
     PIPE = []
@@ -114,6 +115,7 @@ class Arbiter(object):
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NOPUSH, 1)
 
     def run(self):
+        # 
         self.manage_workers()
         while True:
             try:
@@ -125,6 +127,7 @@ class Arbiter(object):
                     self.manage_workers()
                     continue
                 
+                # 没有预定义的信号不处理
                 if sig not in self.SIG_NAMES:
                     self.log.info("Ignoring unknown signal: %s" % sig)
                     continue
@@ -135,12 +138,14 @@ class Arbiter(object):
                     self.log.error("Unhandled signal: %s" % signame)
                     continue
                 self.log.info("Handling signal: %s" % signame)
-                handler()  
+                handler()
+                # 信号处理完继续
                 self.wakeup()   
             except StopIteration:
                 break
             except KeyboardInterrupt:
                 self.stop(False)
+                # 返回 -1 意味着什么？
                 sys.exit(-1)
             except Exception:
                 self.log.exception("Unhandled exception in main loop.")
@@ -170,6 +175,7 @@ class Arbiter(object):
         raise StopIteration
 
     def handle_ttin(self):
+        # 这里只加减数量，每次循环来处理这个东西。
         self.num_workers += 1
     
     def handle_ttou(self):
@@ -191,6 +197,8 @@ class Arbiter(object):
     
     def wakeup(self):
         # Wake up the arbiter
+        try:
+            # 这
         try:
             os.write(self.PIPE[1], '.')
         except IOError, e:
