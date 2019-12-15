@@ -56,6 +56,11 @@ def write(sock, data):
                 continue
             return len(data)
         except socket.error, e:
+            # In short: they're almost always the same value, 
+            # but for portability it's recommended to check for both values (and treat both values the same way).
+            # For most systems, EAGAIN and EWOULDBLOCK will be the same. 
+            # There are only a few systems in which they are different, 
+            # and you can see the list of those systems in this answer.
             if e[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
                 break
             raise

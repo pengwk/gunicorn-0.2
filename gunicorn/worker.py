@@ -27,14 +27,20 @@ class Worker(object):
     def __init__(self, workerid, ppid, socket, app, timeout):
         self.id = workerid
         self.ppid = ppid
+
+        # 为什么要除？？
         self.timeout = timeout / 2.0
+
+        # 这个临时文件用来做什么？
         fd, tmpname = tempfile.mkstemp()
         self.tmp = os.fdopen(fd, "r+b")
         self.tmpname = tmpname
         
         # prevent inherientence
+        # ？？
         self.socket = socket
         util.close_on_exec(self.socket)
+        # 非阻塞
         self.socket.setblocking(0)
                 
         util.close_on_exec(fd)
@@ -47,6 +53,7 @@ class Worker(object):
     
         
     def init_signals(self):
+        # signal.SIG_DFL 这是两种标准信号处理选项之一；它只会执行信号的默认函数。 例如，在大多数系统上，对于 SIGQUIT 的默认操作是转储核心并退出，而对于 SIGCHLD 的默认操作是简单地忽略它。
         map(lambda s: signal.signal(s, signal.SIG_DFL), self.SIGNALS)
         signal.signal(signal.SIGQUIT, self.handle_quit)
         signal.signal(signal.SIGTERM, self.handle_exit)
@@ -60,6 +67,7 @@ class Worker(object):
         sys.exit(0)
         
     def _fchmod(self, mode):
+        # 兼容
         if getattr(os, 'fchmod', None):
             os.fchmod(self.tmp.fileno(), mode)
         else:
@@ -88,6 +96,8 @@ class Worker(object):
                     self._fchmod(spinner)
                     nr += 1
                 except socket.error, e:
+                    # ECONNABORTED Software caused connection abort
+                    # EAGAIN try again
                     if e[0] in (errno.EAGAIN, errno.ECONNABORTED):
                         break # Uh oh!
                     
@@ -103,6 +113,7 @@ class Worker(object):
                     if ret[0]:
                         break
                 except select.error, e:
+                    # EINTR Interrupted system call
                     if e[0] == errno.EINTR:
                         break
                     raise
@@ -115,6 +126,7 @@ class Worker(object):
         util.close_on_exec(client)
         try:
             req = http.HttpRequest(client, addr, self.address)
+            # WSGI 协议
             response = self.app(req.read(), req.start_response)
             http.HttpResponse(client, response, req).send()
         except Exception, e:
